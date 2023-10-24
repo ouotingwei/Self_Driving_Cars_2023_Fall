@@ -1,3 +1,4 @@
+
 import numpy as np
 
 class KalmanFilter:
@@ -6,28 +7,31 @@ class KalmanFilter:
         self.state = np.array([x, y, yaw])
         
         # Transition matrix
-        self.A = np.identity(3)
-        self.B = np.identity(3) 
+        self.A = np.identity(3)  # Identity matrix for state transition
+        self.B = np.identity(3)  # Identity matrix for control input
         
         # State covariance matrix
-        self.S = np.identity(3) * 1
+        self.S = np.identity(3) * 1  # Initialize state covariance matrix
         
         # Observation matrix
         self.C = np.array([[1, 0, 0],
-                           [0, 1, 0]])
+                           [0, 1, 0]])  # Maps the state to the measurement space
         
         # State transition error
-        self.R = np.identity(3) 
+        self.R = np.identity(3)  # Process noise covariance matrix
         
         # Measurement error
-        self.Q = np.identity(2) * 0.6
+        self.Q = np.identity(2) * 0.6  # Measurement noise covariance matrix
 
     def predict(self, u):
+        # Prediction step
         self.state = self.A @ self.state + self.B @ u
-        self.S = self.A @ self.S @ self.A.T + self.R
+        self.S = self.A @ self.S @ self.A.T + self.R  # Update state covariance
 
     def update(self, z):
+        # Update step
         K = self.S @ self.C.T @ np.linalg.inv(self.C @ self.S @ self.C.T + self.Q)
         self.state = self.state + K @ (z - self.C @ self.state)
-        self.S = (np.identity(3) - K @ self.C) @ self.S
-        return self.state, self.S
+        self.S = (np.identity(3) - K @ self.C) @ self.S  # Update state covariance
+        return self.state, self.S  # Return the updated state and covariance
+
