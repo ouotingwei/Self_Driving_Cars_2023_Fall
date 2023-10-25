@@ -1,4 +1,8 @@
-
+"""
+@author: OU,TING-WEI @ M.S. in Robotics 
+date : 10-24-2023
+Self-Driving-Cars HW3 ( NYCU FALL-2023 )
+"""
 import numpy as np
 
 class KalmanFilter:
@@ -18,10 +22,10 @@ class KalmanFilter:
                            [0, 1, 0]])  # Maps the state to the measurement space
         
         # State transition error
-        self.R = np.identity(3)  # Process noise covariance matrix
+        self.R = np.identity(3) * 1  # Process noise covariance matrix
         
         # Measurement error
-        self.Q = np.identity(2) * 0.6  # Measurement noise covariance matrix
+        self.Q = np.identity(2) * 3  # Measurement noise covariance matrix
 
     def predict(self, u):
         # Prediction step
@@ -34,4 +38,3 @@ class KalmanFilter:
         self.state = self.state + K @ (z - self.C @ self.state)
         self.S = (np.identity(3) - K @ self.C) @ self.S  # Update state covariance
         return self.state, self.S  # Return the updated state and covariance
-
