@@ -24,18 +24,19 @@ class Fusion:
         self.est_list = [[], []]
         self.initial = False
 
-        # previous pose data from gps
-        self.gps_global_yaw = 0
-        self.gps_x_previous = 0
-        self.gps_y_previous = 0
-
         # previous pose data from radar_odometry
         self.radar_x_previous = 0
         self.radar_y_previous = 0
         self.radar_yaw_previous = 0
 
+        # previous gps data
+        self.gps_pre_x = 0
+        self.gps_pre_y = 0
+        self.gps_pre_yaw = 0
+
     def shutdown(self):
         print("shuting down fusion.py")
+
 
     def predictPublish(self):
         
@@ -59,6 +60,8 @@ class Fusion:
                                     0, 0, 0, 0, 0, 0,
                                     0, 0, 0, 0, 0, 0,
                                     self.EKF.S[2][0], self.EKF.S[2][1], 0, 0, 0, self.EKF.S[2][2]]
+    
+        # rospy.loginfo("state Covariance:\n%s", predPose.pose.covariance)
                                     
         self.posePub.publish(predPose)
 
@@ -86,24 +89,31 @@ class Fusion:
 
         delta_x = odom_x - self.radar_x_previous
         delta_y = odom_y - self.radar_y_previous
-        #yaw
-        delta_yaw = odom_yaw - self.radar_yaw_previous
-        self.radar_yaw_previous = odom_yaw
+        delta_yaw = atan2(delta_y, delta_x)
 
-        control = [delta_x, delta_y, delta_yaw]
+        delta_yaw -= self.radar_yaw_previous
+
+        del_dis = sqrt(pow(delta_x, 2) + pow(delta_y, 2))
+
+        diff_x = del_dis * cos(delta_yaw)
+        diff_y = del_dis * sin(delta_yaw)
+        diff_yaw = odom_yaw - self.radar_yaw_previous
+        
+        control = [diff_x, diff_y, diff_yaw]
 
         self.radar_x_previous = odom_x
         self.radar_y_previous = odom_y
+        self.radar_yaw_previous = odom_yaw
         
         if not self.initial:
             self.initial = True
             self.EKF = ExtendedKalmanFilter(odom_x, odom_y, odom_yaw)
         else:
             # Update error covriance
-            self.EKF.R = [
+            self.EKF.R = np.array([
                 [odom_covariance[0][0], odom_covariance[0][1], odom_covariance[0][5]],
                 [odom_covariance[1][0], odom_covariance[1][1], odom_covariance[1][5]],
-                [odom_covariance[5][0], odom_covariance[5][1], odom_covariance[5][5]]] # reduce a 6x6 matrix to a 3x3 matrix
+                [odom_covariance[5][0], odom_covariance[5][1], odom_covariance[5][5]]])*100000 # reduce a 6x6 matrix to a 3x3 matrix
             self.EKF.predict(u = control)
 
         self.predictPublish()
@@ -118,31 +128,38 @@ class Fusion:
         #     Use GPS directly
         #     Find a approximate yaw
         #     etc.
-        
-        # Find a approximate yaw
-        delta_x = gps_x - self.gps_x_previous
-        delta_y = gps_y - self.gps_y_previous
-        yaw = atan2(delta_y, delta_x)
-        delta_yaw = yaw - self.gps_yaw_previous
 
-        # update the previous position
-        self.gps_x_previous = gps_x
-        self.gps_y_previous = gps_y
-        self.gps_yaw_previous = yaw
+        x_diff = gps_x - self.gps_pre_x
+        y_diff = gps_y - self.gps_pre_y
 
-        measurement = [gps_x, gps_y, delta_yaw]
-        
+        # Check if the difference is within 0.5
+        if abs(x_diff) > 2 or abs(y_diff) > 2:
+            gps_yaw = atan2(y_diff, x_diff)
+            self.gps_pre_yaw = gps_yaw
+            measurement = [gps_x, gps_y, gps_yaw]
+        else:
+            # If the difference is within 0.5, do not update the measurement
+            measurement = [self.gps_pre_x, self.gps_pre_y, gps_yaw]
+
+        self.gps_pre_x = gps_x
+        self.gps_pre_y = gps_y
+
         if not self.initial:
             self.initial = ExtendedKalmanFilter(gps_x, gps_y)
             self.initial = True
         else:
-            # Update error covriance
-            self.EKF.Q = [
+            #Update error covriance
+            self.EKF.Q = np.array([
                 [gps_covariance[0][0], gps_covariance[0][1], gps_covariance[0][5]],
                 [gps_covariance[1][0], gps_covariance[1][1], gps_covariance[1][5]],
-                [gps_covariance[5][0], gps_covariance[5][1], gps_covariance[5][5]]] # reduce a 6x6 matrix to a 3x3 matrix
-            self.EKF.update(z = measurement)
+                [gps_covariance[5][0], gps_covariance[5][1], gps_covariance[5][5]]])*1 # reduce a 6x6 matrix to a 3x3 matrix"
             
+                # Update error covriance
+            #self.EKF.Q = np.array([
+            #    [gps_covariance[0][0], gps_covariance[0][1]],
+            #    [gps_covariance[1][0], gps_covariance[1][1]]])*1 # reduce a 6x6 matrix to a 3x3 matrix
+            self.EKF.update(z = measurement)
+
         self.predictPublish()
     
     def gtCallback(self, data):

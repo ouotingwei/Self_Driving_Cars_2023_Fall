@@ -18,7 +18,8 @@ class ExtendedKalmanFilter:
         self.S = np.identity(3) * 1
         
         # Observation matrix
-        self.C = np.identity(3)
+        self.C = np.array([[1, 0, 0],[0, 1, 0], [0, 0, 1]])
+        # self.C = np.identity(3) * 1
         
         # State transition error
         self.R = np.identity(3) * 1
@@ -31,13 +32,25 @@ class ExtendedKalmanFilter:
         # Base on the Kalman Filter design in Assignment 3
         # Implement a linear or nonlinear motion model for the control input
         # Calculate Jacobian matrix of the model as self.A
-        self.pose = self.A @ self.pose + self.B @ u
+        # u = [del_x, del_y, del_yaw]
+
+        self.B = np.array([[cos(self.pose[2]), -sin(self.pose[2]), 0],
+                           [sin(self.pose[2]), cos(self.pose[2]), 0],
+                           [0, 0, 1]])
+
+        self.A = np.array([[1, 0, -sin(self.pose[2])*u[0] - cos(self.pose[2])*u[1]],
+                           [0, 1,  cos(self.pose[2])*u[0] - sin(self.pose[2])*u[1]],
+                           [0, 0, 1]])
+
+        self.pose += self.B @ u
         self.S = self.A @ self.S @ self.A.T + self.R
         
     def update(self, z):
         # Base on the Kalman Filter design in Assignment 3
         # Implement a linear or nonlinear observation matrix for the measurement input
         # Calculate Jacobian matrix of the matrix as self.C
+        # z = [x, y, yaw]
+
         K = self.S @ self.C.T @ np.linalg.inv(self.C @ self.S @ self.C.T + self.Q)
         self.pose = self.pose + K @ (z - self.C @ self.pose)
         self.S = (np.identity(3) - K @ self.C) @ self.S
