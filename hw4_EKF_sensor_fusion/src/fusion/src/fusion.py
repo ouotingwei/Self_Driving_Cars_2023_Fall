@@ -37,7 +37,6 @@ class Fusion:
     def shutdown(self):
         print("shuting down fusion.py")
 
-
     def predictPublish(self):
         
         predPose = Odometry()
@@ -113,7 +112,7 @@ class Fusion:
             self.EKF.R = np.array([
                 [odom_covariance[0][0], odom_covariance[0][1], odom_covariance[0][5]],
                 [odom_covariance[1][0], odom_covariance[1][1], odom_covariance[1][5]],
-                [odom_covariance[5][0], odom_covariance[5][1], odom_covariance[5][5]]])*100000 # reduce a 6x6 matrix to a 3x3 matrix
+                [odom_covariance[5][0], odom_covariance[5][1], odom_covariance[5][5]]])*1000 # reduce a 6x6 matrix to a 3x3 matrix
             self.EKF.predict(u = control)
 
         self.predictPublish()
@@ -132,13 +131,13 @@ class Fusion:
         x_diff = gps_x - self.gps_pre_x
         y_diff = gps_y - self.gps_pre_y
 
-        # Check if the difference is within 0.5
+        # Check if the difference is within 2
         if abs(x_diff) > 2 or abs(y_diff) > 2:
             gps_yaw = atan2(y_diff, x_diff)
             self.gps_pre_yaw = gps_yaw
             measurement = [gps_x, gps_y, gps_yaw]
         else:
-            # If the difference is within 0.5, do not update the measurement
+            # If the difference is within 2, do not update the measurement
             measurement = [self.gps_pre_x, self.gps_pre_y, gps_yaw]
 
         self.gps_pre_x = gps_x
@@ -154,7 +153,7 @@ class Fusion:
                 [gps_covariance[1][0], gps_covariance[1][1], gps_covariance[1][5]],
                 [gps_covariance[5][0], gps_covariance[5][1], gps_covariance[5][5]]])*1 # reduce a 6x6 matrix to a 3x3 matrix"
             
-                # Update error covriance
+            # Update error covriance
             #self.EKF.Q = np.array([
             #    [gps_covariance[0][0], gps_covariance[0][1]],
             #    [gps_covariance[1][0], gps_covariance[1][1]]])*1 # reduce a 6x6 matrix to a 3x3 matrix
