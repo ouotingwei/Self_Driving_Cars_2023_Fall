@@ -7,7 +7,7 @@ from sensor_msgs.msg import CompressedImage, PointCloud2
 import sensor_msgs.point_cloud2 as pcl2
 from cv_bridge import CvBridge
 
-output_root = './NCTU/'
+output_root = './moving/'
 output_root_lidar = output_root + 'lidar/'
 output_root_camera = output_root + 'camera/'
 global file_name
@@ -33,19 +33,19 @@ class MySubscriber():
         rospy.Subscriber("/left/image/compressed", CompressedImage, self.camera_callback, queue_size=None)
 
     def lidar_callback(self, msg):
-        global file_name
         # Check the header
         # print(msg.header, '\n')
 
+        global file_name  # Declare file_name as a global variable
         timestamp = str(msg.header.stamp.secs) + "{:09d}".format(msg.header.stamp.nsecs)
         pointcloud = read_point_from_msg(msg)
         np.save(output_root_lidar + str(file_name) + '.npy', pointcloud)
 
         # Call camera callback after processing lidar data
         self.camera_callback(msg)
+        file_name += 1
 
     def camera_callback(self, msg):
-        global file_name
         # Check the header
         # print(msg.header, '\n')
 
@@ -58,7 +58,6 @@ class MySubscriber():
             print("Image type:", img.dtype)
 
             cv2.imwrite(output_root_camera + str(file_name) + '.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 90])
-            file_name += 1
         else:
             print("Warning: Empty or invalid image received.")
 
