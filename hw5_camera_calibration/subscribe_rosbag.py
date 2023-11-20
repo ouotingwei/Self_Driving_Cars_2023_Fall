@@ -7,7 +7,7 @@ from sensor_msgs.msg import CompressedImage, PointCloud2
 import sensor_msgs.point_cloud2 as pcl2
 from cv_bridge import CvBridge
 
-output_root = './nctu/'
+output_root = './qrcode/'
 output_root_lidar  = output_root + 'lidar/'
 output_root_camera = output_root + 'camera/'
 
@@ -58,4 +58,3 @@ if __name__ == '__main__':
   rospy.init_node('subscriber_node', anonymous=True)
   MySubscriber()
   rospy.spin()
-
